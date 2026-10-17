@@ -1,0 +1,21 @@
+name: Pemeriksaan SembakoPOS
+on:
+  push:
+    branches: [main, 'chatgpt/**']
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  kualitas:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Siapkan Bun
+        uses: oven-sh/setup-bun@v2
+      - name: Instal dependensi
+        run: bun install --frozen-lockfile
+      - name: Pengujian otomatis
+        run: bun run test
+      - name: Build website
+        run: bun run build
