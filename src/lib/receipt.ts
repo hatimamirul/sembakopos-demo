@@ -1,4 +1,4 @@
-import { formatDate, formatNum, formatRp, type Tx } from './pos';
+import { formatDate, formatNum, type Tx } from './pos';
 import { defaultProfile, defaultReceipt, type ShopProfile, type ReceiptSettings } from './settings';
 import { isSafeImage } from './image';
 export const escapeHtml = (text: string) => text.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] ?? c);
@@ -12,8 +12,16 @@ function needsPackagingLabel(productName: string, packageName: string): boolean 
 
 export function receiptMarkup(tx: Tx, profile: ShopProfile = defaultProfile, settings: ReceiptSettings = defaultReceipt) {
   const e = escapeHtml, v = settings.visible;
-  const row = (label: string, amount: number, strong = false) => `<div class="receipt-row${strong ? ' receipt-total' : ''}"><span>${e(label)}</span><span>${e(formatRp(amount))}</span></div>`;
-  return `<article class="thermal-receipt"><header class="receipt-header">${v.logo && isSafeImage(profile.logo) ? `<img class="receipt-logo" src="${profile.logo}" alt="Logo toko">` : ''}<h1>${e(profile.name || 'SembakoPOS')}</h1>${profile.address ? `<p>${e(profile.address)}</p>` : ''}${v.phone && profile.phone ? `<p>HP: ${e(profile.phone)}</p>` : ''}${v.whatsapp && profile.whatsapp ? `<p>WA: ${e(profile.whatsapp)}</p>` : ''}${profile.note ? `<p>${e(profile.note)}</p>` : ''}<p class="receipt-demo">STRUK DEMO · TIDAK RESMI</p>${v.transaction ? `<p>${e(tx.id)}</p>` : ''}${v.date ? `<p>${e(formatDate(tx.date))}</p>` : ''}</header>${v.items ? `<section class="receipt-items">${tx.items.map(i => `<div class="receipt-item"><div class="receipt-item-name">${e(i.name)}</div>${needsPackagingLabel(i.name, i.pkgName) ? `<div class="receipt-item-package">Kemasan: ${e(i.pkgName)}</div>` : ''}<div class="receipt-row receipt-item-prices"><span>${e(formatNum(i.qty))} × ${e(formatRp(i.unitPrice))}${i.wholesale ? ' (grosir)' : ''}</span><span>${e(formatRp(i.subtotal))}</span></div></div>`).join('')}</section>` : ''}<section class="receipt-summary">${v.total ? `${row('Subtotal', tx.subtotal)}${tx.discount ? row('Diskon', -tx.discount) : ''}${row('TOTAL', tx.total, true)}` : ''}${v.paid ? row('Tunai', tx.paid) : ''}${v.change ? row('Kembalian', tx.change) : ''}</section>${v.footer ? `<footer class="receipt-footer">${e(settings.footerText)}</footer>` : ''}</article>`;
+  // Semua nominal memakai kolom Rp dan angka terpisah. Lebar kolom angka
+  // dihitung sekali untuk seluruh struk agar Rp selalu lurus ke bawah,
+  // termasuk pada rincian barang dan baris TOTAL.
+  const amounts = [...tx.items.map(item => item.subtotal), tx.subtotal, tx.discount, tx.total, tx.paid, tx.change];
+  const amountDigits = Math.max(9, ...amounts.map(amount => formatNum(Math.round(amount)).length));
+  const money = (amount: number) =>
+    `<span class="receipt-currency">Rp</span><span class="receipt-amount">${e(formatNum(Math.round(amount)))}</span>`;
+  const row = (label: string, amount: number, strong = false) =>
+    `<div class="receipt-row${strong ? ' receipt-total' : ''}"><span class="receipt-label">${e(label)}</span>${money(amount)}</div>`;
+  return `<article class="thermal-receipt" style="--receipt-amount-width:${amountDigits}ch"><header class="receipt-header">${v.logo && isSafeImage(profile.logo) ? `<img class="receipt-logo" src="${profile.logo}" alt="Logo toko">` : ''}<h1>${e(profile.name || 'SembakoPOS')}</h1>${profile.address ? `<p>${e(profile.address)}</p>` : ''}${v.phone && profile.phone ? `<p>HP: ${e(profile.phone)}</p>` : ''}${v.whatsapp && profile.whatsapp ? `<p>WA: ${e(profile.whatsapp)}</p>` : ''}${profile.note ? `<p>${e(profile.note)}</p>` : ''}<p class="receipt-demo">STRUK DEMO · TIDAK RESMI</p>${v.transaction ? `<p>${e(tx.id)}</p>` : ''}${v.date ? `<p>${e(formatDate(tx.date))}</p>` : ''}</header>${v.items ? `<section class="receipt-items">${tx.items.map(i => `<div class="receipt-item"><div class="receipt-item-name">${e(i.name)}</div>${needsPackagingLabel(i.name, i.pkgName) ? `<div class="receipt-item-package">Kemasan: ${e(i.pkgName)}</div>` : ''}<div class="receipt-row receipt-item-prices"><span class="receipt-label">${e(formatNum(i.qty))} × ${e(formatNum(Math.round(i.unitPrice)))}${i.wholesale ? ' (grosir)' : ''}</span>${money(i.subtotal)}</div></div>`).join('')}</section>` : ''}<section class="receipt-summary">${v.total ? `${row('Subtotal', tx.subtotal)}${tx.discount ? row('Diskon', -tx.discount) : ''}${row('TOTAL', tx.total, true)}` : ''}${v.paid ? row('Tunai', tx.paid) : ''}${v.change ? row('Kembalian', tx.change) : ''}</section>${v.footer ? `<footer class="receipt-footer">${e(settings.footerText)}</footer>` : ''}</article>`;
 }
 export function receiptCss(settings: ReceiptSettings) {
   const paper = settings.paper === '80' ? 80 : 58;
@@ -52,21 +60,21 @@ body { width: ${paper}mm; max-width: 100%; }
 .receipt-item-package { font-size: .85em; line-height: 1.2; margin: .45mm 0; }
 .receipt-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) max-content;
+  grid-template-columns: minmax(0, 1fr) 2.2ch var(--receipt-amount-width, 9ch);
   align-items: baseline;
-  column-gap: 1.5mm;
+  column-gap: .6mm;
 }
-.receipt-row > span:first-child { min-width: 0; }
-.receipt-row > span:last-child {
+.receipt-row > .receipt-label { min-width: 0; }
+.receipt-row > .receipt-currency { text-align: left; white-space: nowrap; }
+.receipt-row > .receipt-amount {
   text-align: right;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
-.receipt-item-prices { font-size: .93em; margin-top: .6mm; }
+.receipt-item-prices { margin-top: .6mm; }
 .receipt-summary .receipt-row { margin-bottom: .6mm; }
 .receipt-total {
   font-weight: 800;
-  font-size: 1.13em;
   border-top: .2mm solid #555;
   padding-top: 1.1mm;
   margin-top: 1.1mm;
