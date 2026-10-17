@@ -1,9 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { meta, PageTitle } from "@/components/AppShell";
 import { checkout, formatNum, formatRp, parseIntStrict, priceCart, stockProblems, uid, unitPriceFor, type CartLine, type Product, type Tx } from "@/lib/pos";
 import { printReceipt } from "@/lib/receipt";
 import { useStore } from "@/lib/store";
+import { Button } from "@/components/ui/button";
+import { ProductImage } from "@/components/ProductImage";
+import { BarcodeScanner } from "@/components/BarcodeScanner";
+import { findByBarcode } from "@/lib/barcode";
+import { ScanBarcode, Minus, Plus, Trash2 } from "lucide-react";
 
 export const Route = createFileRoute("/")({
   head: () => meta("Kasir", "Kasir demo toko sembako: keranjang, harga grosir otomatis, pembayaran tunai dan struk."),
@@ -17,20 +22,17 @@ function ProductCard({ p, onAdd }: { p: Product; onAdd: (pkgId: string, qty: num
   const q = parseIntStrict(qty, 1);
   return (
     <div className="card p-3 flex flex-col gap-2">
-      <div className="flex justify-between gap-2">
+      <ProductImage src={p.image} name={p.name} className="w-full h-28" />
+      <div className="flex flex-wrap justify-between gap-2">
         <div className="font-bold leading-tight">{p.name}</div>
         <span className={`text-xs whitespace-nowrap font-semibold ${p.stock <= 10 ? "text-destructive" : "text-muted-foreground"}`}>
           Stok {formatNum(p.stock)} {p.baseUnit}
         </span>
       </div>
-      <div className="flex flex-wrap gap-1">
-        {p.packages.map((k) => (
-          <button key={k.id} onClick={() => setPkg(k.id)}
-            className={`rounded-md border px-2 py-1 text-xs font-semibold ${k.id === pkgId ? "bg-primary text-primary-foreground border-primary" : "bg-muted"}`}>
-            {k.name}
-          </button>
-        ))}
-      </div>
+      <label className="label" htmlFor={`package-${p.id}`}>Kemasan / satuan</label>
+      <select id={`package-${p.id}`} className="field" value={pkgId} onChange={e => setPkg(e.target.value)}>
+        {p.packages.map(k => <option key={k.id} value={k.id}>{k.name} · isi {k.factor} {p.baseUnit}</option>)}
+      </select>
       {pkg && (
         <div className="text-xs text-muted-foreground">
           Ecer <b className="text-foreground">{formatRp(pkg.retail)}</b>
@@ -38,12 +40,12 @@ function ProductCard({ p, onAdd }: { p: Product; onAdd: (pkgId: string, qty: num
         </div>
       )}
       <div className="flex gap-2 mt-auto">
-        <input className="field !w-20 text-center" inputMode="numeric" value={qty} aria-label="Jumlah"
+        <input className="field !w-20 text-center" inputMode="numeric" value={qty} aria-label={`Jumlah ${p.name}`}
           onChange={(e) => setQty(e.target.value)} />
-        <button className="btn btn-primary flex-1" disabled={!q || !pkg}
+        <Button className="btn btn-primary flex-1" disabled={!q || !pkg}
           onClick={() => { if (q && pkg) { onAdd(pkg.id, q); setQty("1"); } }}>
           + Tambah
-        </button>
+        </Button>
       </div>
       {qty && !q && <div className="text-xs text-destructive">Jumlah harus angka bulat ≥ 1</div>}
     </div>
@@ -51,12 +53,25 @@ function ProductCard({ p, onAdd }: { p: Product; onAdd: (pkgId: string, qty: num
 }
 
 function Kasir() {
-  const { state, setState } = useStore();
+  const { state, setState, ready } = useStore();
   const [cart, setCart] = useState<CartLine[]>([]);
   const [search, setSearch] = useState("");
   const [discountS, setDiscount] = useState("");
   const [paidS, setPaid] = useState("");
   const [error, setError] = useState("");
+  const [scanning, setScanning] = useState(false);
+  const [barcode, setBarcode] = useState('');
+  const [barcodeError, setBarcodeError] = useState('');
+  const [matchId, setMatchId] = useState<string | null>(null);
+  const [scanPkg, setScanPkg] = useState('');
+  const [scanQty, setScanQty] = useState('1');
+  const matched = state.products.find(p => p.id === matchId);
+  const handleCode = useCallback((code: string) => {
+    setScanning(false); setBarcode(code);
+    const product = findByBarcode(state.products, code);
+    if (!product) { setBarcodeError(`Barcode "${code}" tidak ditemukan. Periksa kode di Master Barang.`); setMatchId(null); return; }
+    setBarcodeError(''); setMatchId(product.id); setScanPkg(product.packages[0]?.id ?? ''); setScanQty('1');
+  }, [state.products]);
   const [done, setDone] = useState<Tx | null>(null);
 
   const items = useMemo(() => priceCart(state.products, cart), [state.products, cart]);
@@ -82,12 +97,12 @@ function Kasir() {
     if (paid === null) return setError("Isi jumlah uang tunai dengan angka.");
     const r = checkout(state, cart, discount, paid);
     if (!r.ok) return setError(r.error);
-    setState(r.state);
+    if (!setState(r.state)) return;
     setDone(r.tx);
     setCart([]); setDiscount(""); setPaid(""); setError("");
   };
 
-  const list = state.products.filter((p) => p.name.toLowerCase().includes(search.toLowerCase()));
+  const list = state.products.filter((p) => (p.name.toLowerCase().includes(search.toLowerCase()) || p.barcode?.includes(search.trim())));
   const quick = [total, Math.ceil(total / 10000) * 10000, Math.ceil(total / 50000) * 50000, Math.ceil(total / 100000) * 100000]
     .filter((v, i, a) => v > 0 && a.indexOf(v) === i);
 
@@ -96,7 +111,9 @@ function Kasir() {
       <PageTitle title="Kasir" sub="Pilih barang, kemasan dan jumlah. Harga grosir otomatis dihitung dari total jumlah di keranjang." />
       <div className="grid gap-4 lg:grid-cols-[1fr_380px]">
         <section>
-          <input className="field mb-3" placeholder="Cari barang…" value={search} onChange={(e) => setSearch(e.target.value)} />
+          <div className="flex gap-2 mb-3"><input className="field min-w-0" aria-label="Cari barang" placeholder="Cari nama / barcode…" value={search} onChange={(e) => setSearch(e.target.value)} /><Button variant="outline" onClick={() => setScanning(true)}><ScanBarcode />Scan barcode</Button></div>
+          <form className="flex flex-wrap gap-2 mb-4" onSubmit={e => { e.preventDefault(); handleCode(barcode); }}><input className="field flex-1 min-w-[140px]" aria-label="Kode barcode" placeholder="Ketik / scan USB atau Bluetooth" value={barcode} onChange={e => setBarcode(e.target.value)} autoComplete="off" /><Button type="submit" variant="secondary">Cari kode</Button></form>
+          {barcodeError && <p role="alert" className="text-destructive bg-destructive/10 p-3 text-sm rounded-md mb-3">{barcodeError}</p>}
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {list.map((p) => <ProductCard key={p.id} p={p} onAdd={(k, q) => add(p.id, k, q)} />)}
             {list.length === 0 && <p className="text-muted-foreground text-sm">Barang tidak ditemukan.</p>}
@@ -108,22 +125,23 @@ function Kasir() {
           {items.length === 0 && <p className="text-sm text-muted-foreground">Belum ada barang.</p>}
           <ul className="divide-y">
             {items.map((i) => {
-              const p = state.products.find((x) => x.id === i.productId)!;
-              const pkg = p.packages.find((x) => x.name === i.pkgName)!;
+              const p = state.products.find((x) => x.id === i.productId);
+              const pkg = p?.packages.find((x) => x.name === i.pkgName);
+              if (!p || !pkg) return null;
               const next = pkg.wholesale > 0 && !i.wholesale ? pkg.wholesaleMin - i.qty : 0;
               return (
                 <li key={i.productId + pkg.id} className="py-2">
-                  <div className="flex justify-between gap-2 text-sm">
+                  <div className="flex flex-wrap justify-between gap-2 text-sm">
                     <span className="font-semibold">{i.name} <span className="text-muted-foreground font-normal">· {i.pkgName}</span></span>
                     <span className="font-bold">{formatRp(i.subtotal)}</span>
                   </div>
-                  <div className="flex items-center gap-2 mt-1 text-xs">
-                    <button className="btn btn-soft !px-2.5 !py-1" onClick={() => setGroupQty(p.id, pkg.id, i.qty - 1)}>−</button>
+                  <div className="flex flex-wrap items-center gap-2 mt-1 text-xs">
+                    <Button className="btn btn-soft !px-2.5 !py-1" aria-label={`Kurangi ${i.name}`} title="Kurangi jumlah" onClick={() => setGroupQty(p.id, pkg.id, i.qty - 1)}><Minus /></Button>
                     <span className="w-8 text-center font-bold">{i.qty}</span>
-                    <button className="btn btn-soft !px-2.5 !py-1" onClick={() => setGroupQty(p.id, pkg.id, i.qty + 1)}>+</button>
+                    <Button className="btn btn-soft !px-2.5 !py-1" aria-label={`Tambah ${i.name}`} title="Tambah jumlah" onClick={() => setGroupQty(p.id, pkg.id, i.qty + 1)}><Plus /></Button>
                     <span className="text-muted-foreground">× {formatRp(i.unitPrice)}</span>
                     {i.wholesale && <span className="rounded bg-secondary text-secondary-foreground px-1.5 font-bold">GROSIR</span>}
-                    <button className="ml-auto text-destructive" onClick={() => setGroupQty(p.id, pkg.id, 0)}>Hapus</button>
+                    <Button variant="ghost" className="ml-auto text-destructive" aria-label={`Hapus ${i.name}`} title="Hapus dari keranjang" onClick={() => setGroupQty(p.id, pkg.id, 0)}><Trash2 /></Button>
                   </div>
                   {next > 0 && <div className="text-[11px] text-muted-foreground mt-1">Tambah {next} lagi untuk harga grosir {formatRp(unitPriceFor(pkg, pkg.wholesaleMin).price)}</div>}
                 </li>
@@ -134,17 +152,17 @@ function Kasir() {
           <div className="border-t pt-3 space-y-2 text-sm">
             <div className="flex justify-between"><span>Subtotal</span><span>{formatRp(subtotal)}</span></div>
             <div>
-              <label className="label">Diskon (Rp, opsional)</label>
-              <input className="field" inputMode="numeric" value={discountS} onChange={(e) => setDiscount(e.target.value)} placeholder="0" />
+              <label htmlFor="discount" className="label">Diskon (Rp, opsional)</label>
+              <input id="discount" className="field" inputMode="numeric" value={discountS} onChange={(e) => setDiscount(e.target.value)} placeholder="0" />
               {discount === null && <div className="text-xs text-destructive">Diskon harus angka bulat.</div>}
             </div>
             <div className="flex justify-between text-xl font-extrabold"><span>Total</span><span className="text-primary">{formatRp(total)}</span></div>
             <div>
-              <label className="label">Uang tunai diterima (Rp)</label>
-              <input className="field text-lg font-bold" inputMode="numeric" value={paidS} onChange={(e) => setPaid(e.target.value)} placeholder="0" />
+              <label htmlFor="cash" className="label">Uang tunai diterima (Rp)</label>
+              <input id="cash" className="field text-lg font-bold" inputMode="numeric" value={paidS} onChange={(e) => setPaid(e.target.value)} placeholder="0" />
               {paidS !== "" && paid === null && <div className="text-xs text-destructive">Harus angka bulat.</div>}
               <div className="flex flex-wrap gap-1 mt-2">
-                {quick.map((v) => <button key={v} className="btn btn-soft !py-1 !px-2 text-xs" onClick={() => setPaid(String(v))}>{v === total ? "Uang pas" : formatRp(v)}</button>)}
+                {quick.map((v) => <Button key={v} className="btn btn-soft !py-1 !px-2 text-xs" onClick={() => setPaid(String(v))}>{v === total ? "Uang pas" : formatRp(v)}</Button>)}
               </div>
             </div>
             <div className="flex justify-between font-bold">
@@ -155,11 +173,19 @@ function Kasir() {
             </div>
           </div>
           {error && <div className="rounded-md bg-destructive/10 text-destructive text-sm p-2 font-semibold">{error}</div>}
-          <button className="btn btn-primary !py-3 text-base" disabled={items.length === 0} onClick={pay}>Bayar Tunai</button>
-          {items.length > 0 && <button className="text-xs text-muted-foreground underline" onClick={() => setCart([])}>Kosongkan keranjang</button>}
+          <Button className="btn btn-primary !py-3 text-base" disabled={items.length === 0 || !ready} onClick={pay}>Bayar Tunai</Button>
+          {items.length > 0 && <Button className="text-xs text-muted-foreground underline" onClick={() => setCart([])}>Kosongkan keranjang</Button>}
         </aside>
       </div>
 
+      {scanning && <BarcodeScanner onCode={handleCode} onClose={() => setScanning(false)} />}
+      {matched && <div className="fixed inset-0 z-50 grid place-items-center bg-foreground/40 p-3" role="dialog" aria-modal="true" aria-labelledby="barcode-confirm"><div className="card p-5 w-full max-w-sm space-y-3">
+        <h2 id="barcode-confirm" className="font-bold text-lg">Konfirmasi barang</h2><ProductImage src={matched.image} name={matched.name} className="w-full h-28" /><p className="font-semibold">{matched.name}</p><p className="text-sm text-muted-foreground">Barcode: {matched.barcode}</p>
+        <div><label className="label" htmlFor="scan-package">Kemasan / satuan</label><select id="scan-package" className="field" value={scanPkg} onChange={e => setScanPkg(e.target.value)}>{matched.packages.map(k => <option key={k.id} value={k.id}>{k.name} · isi {k.factor} {matched.baseUnit}</option>)}</select></div>
+        <div><label className="label" htmlFor="scan-qty">Jumlah kemasan</label><input id="scan-qty" className="field" inputMode="numeric" value={scanQty} onChange={e => setScanQty(e.target.value)} /></div>
+        {parseIntStrict(scanQty, 1) === null && <p role="alert" className="text-destructive text-sm">Jumlah harus angka bulat minimal 1.</p>}
+        <div className="flex gap-2"><Button variant="secondary" onClick={() => setMatchId(null)}>Batal</Button><Button className="flex-1" disabled={parseIntStrict(scanQty, 1) === null || !scanPkg} onClick={() => { const q = parseIntStrict(scanQty, 1); if (q !== null) { add(matched.id, scanPkg, q); setMatchId(null); setBarcode(''); } }}>Tambah ke keranjang</Button></div>
+      </div></div>}
       {done && (
         <div className="fixed inset-0 z-50 grid place-items-center bg-foreground/40 p-4">
           <div className="card p-5 w-full max-w-sm text-center space-y-2">
@@ -169,8 +195,8 @@ function Kasir() {
             <div className="text-sm">Total <b>{formatRp(done.total)}</b> · Tunai {formatRp(done.paid)}</div>
             <div className="text-2xl font-extrabold text-success">Kembali {formatRp(done.change)}</div>
             <div className="flex gap-2 pt-2">
-              <button className="btn btn-soft flex-1" onClick={() => printReceipt(done)}>Cetak Struk</button>
-              <button className="btn btn-primary flex-1" onClick={() => setDone(null)}>Transaksi Baru</button>
+              <Button className="btn btn-soft flex-1" onClick={() => printReceipt(done, state.profile, state.receipt)}>Cetak Struk</Button>
+              <Button className="btn btn-primary flex-1" onClick={() => setDone(null)}>Transaksi Baru</Button>
             </div>
           </div>
         </div>

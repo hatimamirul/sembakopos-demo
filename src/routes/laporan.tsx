@@ -4,6 +4,7 @@ import { meta, PageTitle } from "@/components/AppShell";
 import { formatDate, formatNum, formatRp, type Tx } from "@/lib/pos";
 import { printReceipt } from "@/lib/receipt";
 import { useStore } from "@/lib/store";
+import { Button } from '@/components/ui/button';
 
 export const Route = createFileRoute("/laporan")({
   head: () => meta("Laporan", "Ringkasan omzet, harga pokok dan laba kotor serta riwayat transaksi."),
@@ -36,7 +37,7 @@ function Laporan() {
       <PageTitle title="Laporan" sub="Laba kotor = omzet (setelah diskon) − harga modal barang terjual." />
       <div className="flex gap-2 mb-4">
         {(["hari", "semua"] as const).map((r) => (
-          <button key={r} className={`btn ${range === r ? "btn-primary" : "btn-soft"}`} onClick={() => setRange(r)}>{r === "hari" ? "Hari ini" : "Semua waktu"}</button>
+          <Button key={r} className={`btn ${range === r ? "btn-primary" : "btn-soft"}`} onClick={() => setRange(r)}>{r === "hari" ? "Hari ini" : "Semua waktu"}</Button>
         ))}
       </div>
       <div className="grid gap-3 grid-cols-2 lg:grid-cols-4 mb-5">
@@ -62,7 +63,7 @@ function Laporan() {
                 <td>{t.items.map((i) => `${i.qty} ${i.pkgName} ${i.name}`).join(", ")}</td>
                 <td className="font-semibold whitespace-nowrap">{formatRp(t.total)}</td>
                 <td className="whitespace-nowrap">{formatRp(t.total - t.items.reduce((a, i) => a + i.cost, 0))}</td>
-                <td><button className="text-primary underline text-xs" onClick={() => printReceipt(t)}>Struk</button></td>
+                <td><Button variant="link" onClick={() => printReceipt(t, state.profile, state.receipt)}>Struk</Button></td>
               </tr>
             ))}</tbody>
           </table>
