@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { seed, type State } from "./pos";
 import { loadState, persistState } from './persistence';
+import { defaultProfile, defaultReceipt } from './settings';
 type Ctx = { state: State; setState: (s: State) => boolean; reset: () => void; storageError: string; ready: boolean };
 const C = createContext<Ctx | null>(null);
 
@@ -24,8 +25,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     if (!result.ok) { setError(result.error); return false; }
     set(next); setError(''); return true;
   };
-  const reset = () => { setState({ ...seed(), profile: state.profile, receipt: state.receipt }); };
-  return <C.Provider value={{ state, setState, reset, storageError, ready: ready && !blocked }}>{children}</C.Provider>;
+  const reset = () => { setState({ ...seed(), profile: state.profile ?? defaultProfile, receipt: state.receipt ?? defaultReceipt }); };
+  return <C.Provider value={{ state, setState, reset, storageError, ready: ready && !blocked }}>{ready ? children : <p className="p-5 text-muted-foreground">Memuat data browser…</p>}</C.Provider>;
 }
 
 export function useStore() {

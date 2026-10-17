@@ -59,21 +59,21 @@ function Barang() {
       <section className="border-b pb-5 mb-5">
         <h2 className="font-bold mb-3">{f.id ? "Ubah barang" : "Tambah barang baru"}</h2>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <div><label className="label" htmlFor={`barang-1-${f.id ?? 'new'}`}>Nama barang</label><input id={`barang-1-${f.id ?? 'new'}}`}} className="field" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></div>
-          <div><label className="label" htmlFor={`barang-2-${f.id ?? 'new'}`}>Satuan dasar</label><input id={`barang-2-${f.id ?? 'new'}}`}} className="field" value={f.baseUnit} onChange={(e) => setF({ ...f, baseUnit: e.target.value })} placeholder="pouch / kg / sachet" /></div>
-          <div><label className="label" htmlFor={`barang-3-${f.id ?? 'new'}`}>Harga modal / satuan dasar (Rp)</label><input id={`barang-3-${f.id ?? 'new'}}`}} className="field" inputMode="numeric" value={f.cost} onChange={(e) => setF({ ...f, cost: e.target.value })} /></div>
-          <div><label className="label" htmlFor={`barang-4-${f.id ?? 'new'}`}>Stok (satuan dasar){f.id && " — ubah via Stok Opname disarankan"}</label><input id={`barang-4-${f.id ?? 'new'}}`}} className="field" inputMode="numeric" value={f.stock} onChange={(e) => setF({ ...f, stock: e.target.value })} /></div>
+          <div><label className="label" htmlFor={`barang-1-${f.id ?? 'new'}`}>Nama barang</label><input id={`barang-1-${f.id ?? 'new'}`} className="field" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></div>
+          <div><label className="label" htmlFor={`barang-2-${f.id ?? 'new'}`}>Satuan dasar</label><input id={`barang-2-${f.id ?? 'new'}`} className="field" value={f.baseUnit} onChange={(e) => setF({ ...f, baseUnit: e.target.value })} placeholder="pouch / kg / sachet" /></div>
+          <div><label className="label" htmlFor={`barang-3-${f.id ?? 'new'}`}>Harga modal / satuan dasar (Rp)</label><input id={`barang-3-${f.id ?? 'new'}`} className="field" inputMode="numeric" value={f.cost} onChange={(e) => setF({ ...f, cost: e.target.value })} /></div>
+          <div><label className="label" htmlFor={`barang-4-${f.id ?? 'new'}`}>Stok (satuan dasar){f.id && " — ubah via Stok Opname disarankan"}</label><input id={`barang-4-${f.id ?? 'new'}`} className="field" inputMode="numeric" value={f.stock} onChange={(e) => setF({ ...f, stock: e.target.value })} /></div>
         </div>
         <div className="grid gap-4 sm:grid-cols-2 mt-4"><ImageUpload label="Foto produk" value={f.image} onChange={image => setF({ ...f, image })} /><div><label htmlFor="barcode" className="label">Barcode pabrikan (opsional)</label><input id="barcode" className="field" value={f.barcode} onChange={e => setF({ ...f, barcode: e.target.value })} placeholder="Contoh: 0012345678905" autoComplete="off" /><p className="text-xs text-muted-foreground mt-2">Kode unik per barang. Angka nol di depan tetap disimpan.</p></div></div>
         <h3 className="font-semibold mt-4 mb-2 text-sm">Kemasan / varian jual</h3>
         <div className="space-y-2">
           {f.packages.map((k, i) => (
             <div key={k.id} className="grid gap-2 grid-cols-2 md:grid-cols-[2fr_1fr_1fr_1fr_1fr_auto] items-end rounded-lg bg-muted p-2">
-              <div><label className="label" htmlFor={`barang-5-${k.id}`}>Nama kemasan</label><input id={`barang-5-${k.id}}`}} className="field" value={k.name} onChange={(e) => setPkg(i, "name", e.target.value)} /></div>
-              <div><label className="label" htmlFor={`barang-6-${k.id}`}>Isi ({f.baseUnit || "satuan"})</label><input id={`barang-6-${k.id}}`}} className="field" inputMode="numeric" value={k.factor} onChange={(e) => setPkg(i, "factor", e.target.value)} /></div>
-              <div><label className="label" htmlFor={`barang-7-${k.id}`}>Harga ecer</label><input id={`barang-7-${k.id}}`}} className="field" inputMode="numeric" value={k.retail} onChange={(e) => setPkg(i, "retail", e.target.value)} /></div>
-              <div><label className="label" htmlFor={`barang-8-${k.id}`}>Harga grosir</label><input id={`barang-8-${k.id}}`}} className="field" inputMode="numeric" value={k.wholesale} onChange={(e) => setPkg(i, "wholesale", e.target.value)} /></div>
-              <div><label className="label" htmlFor={`barang-9-${k.id}`}>Grosir mulai</label><input id={`barang-9-${k.id}}`}} className="field" inputMode="numeric" value={k.wholesaleMin} onChange={(e) => setPkg(i, "wholesaleMin", e.target.value)} /></div>
+              <div><label className="label" htmlFor={`barang-5-${k.id}`}>Nama kemasan</label><input id={`barang-5-${k.id}`} className="field" value={k.name} onChange={(e) => setPkg(i, "name", e.target.value)} /></div>
+              <div><label className="label" htmlFor={`barang-6-${k.id}`}>Isi ({f.baseUnit || "satuan"})</label><input id={`barang-6-${k.id}`} className="field" inputMode="numeric" value={k.factor} onChange={(e) => setPkg(i, "factor", e.target.value)} /></div>
+              <div><label className="label" htmlFor={`barang-7-${k.id}`}>Harga ecer</label><input id={`barang-7-${k.id}`} className="field" inputMode="numeric" value={k.retail} onChange={(e) => setPkg(i, "retail", e.target.value)} /></div>
+              <div><label className="label" htmlFor={`barang-8-${k.id}`}>Harga grosir</label><input id={`barang-8-${k.id}`} className="field" inputMode="numeric" value={k.wholesale} onChange={(e) => setPkg(i, "wholesale", e.target.value)} /></div>
+              <div><label className="label" htmlFor={`barang-9-${k.id}`}>Grosir mulai</label><input id={`barang-9-${k.id}`} className="field" inputMode="numeric" value={k.wholesaleMin} onChange={(e) => setPkg(i, "wholesaleMin", e.target.value)} /></div>
               <Button className="btn btn-danger" onClick={() => setF({ ...f, packages: f.packages.filter((_, j) => j !== i) })}>Hapus</Button>
             </div>
           ))}
