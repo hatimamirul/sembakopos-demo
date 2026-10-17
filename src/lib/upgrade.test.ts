@@ -95,7 +95,7 @@ describe('Upgrade SembakoPOS', () => {
       const numbers = rows.map(row => row.children[2]);
       expect(currencies.every(el => el?.className === 'receipt-currency' && el.textContent === 'Rp')).toBe(true);
       expect(numbers.every(el => el?.className === 'receipt-amount')).toBe(true);
-      expect(numbers.map(el => el.textContent)).toEqual(['105.000', '105.000', '105.000', '110.000', '5.000']);
+      expect(numbers.map(el => el?.textContent)).toEqual(['105.000', '105.000', '105.000', '110.000', '5.000']);
       expect(doc.querySelector('.thermal-receipt')?.getAttribute('style')).toContain('--receipt-amount-width:9ch');
       // Harga satuan tidak lagi membuat Rp yang muncul di kolom kiri.
       expect(rows[0]?.children[0]?.textContent).not.toContain('Rp');
