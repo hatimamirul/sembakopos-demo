@@ -70,7 +70,7 @@ describe('Upgrade SembakoPOS', () => {
     const markup = receiptDocument(sampleReceipt, defaultProfile, { ...defaultReceipt, paper: '80' });
     const doc = new DOMParser().parseFromString(markup, 'text/html');
     expect(doc.querySelector('.receipt-item-name')?.textContent).toBe('Minyak Goreng Pouch 1 L');
-    expect(doc.querySelector('.receipt-item-package')?.textContent).toBe('Kemasan: Pouch');
+    expect(doc.querySelector('.receipt-item-package')).toBeNull();
     const row = doc.querySelector('.receipt-item-prices');
     expect(row?.children).toHaveLength(2);
     expect(row?.children[0]?.textContent).toContain('21.000');
@@ -81,6 +81,29 @@ describe('Upgrade SembakoPOS', () => {
     expect(css).toContain('grid-template-columns: minmax(0, 1fr) max-content');
     expect(css).toContain('white-space: nowrap');
     expect(css).toContain('font-variant-numeric: tabular-nums');
+  });
+  it('uses compact sans-serif typography and a short demo header for both paper sizes', () => {
+    for (const paper of ['58', '80'] as const) {
+      const doc = new DOMParser().parseFromString(
+        receiptDocument(sampleReceipt, defaultProfile, { ...defaultReceipt, paper }),
+        'text/html'
+      );
+      const css = doc.querySelector('style')?.textContent ?? '';
+      expect(css).toContain('Arial, Helvetica, sans-serif');
+      expect(css).toContain('letter-spacing: normal');
+      expect(css).toContain('line-height: 1.2');
+      expect(doc.querySelector('.receipt-demo')?.textContent).toBe('STRUK DEMO · TIDAK RESMI');
+    }
+  });
+  it('shows packaging only when it is not already a complete word in the product name', () => {
+    const makeDoc = (name: string, pkgName: string) => {
+      const tx = { ...sampleReceipt, items: [{ ...sampleReceipt.items[0]!, name, pkgName }] };
+      return new DOMParser().parseFromString(receiptDocument(tx), 'text/html');
+    };
+    expect(makeDoc('Minyak Goreng Pouch 1 L', 'Pouch').querySelector('.receipt-item-package')).toBeNull();
+    expect(makeDoc('Pouchman Minyak Goreng', 'Pouch').querySelector('.receipt-item-package')?.textContent).toBe('Kemasan: Pouch');
+    expect(makeDoc('Beras Medium', 'Karung 25 kg').querySelector('.receipt-item-package')?.textContent).toBe('Kemasan: Karung 25 kg');
+    expect(makeDoc('Susu Karton (12 pcs)', 'Karton (12 pcs)').querySelector('.receipt-item-package')).toBeNull();
   });
   it('keeps long item names safe and avoids absolute or fixed paper heights', () => {
     const longName = 'Beras Super Premium 25 kg & Telur Segar <script>';
