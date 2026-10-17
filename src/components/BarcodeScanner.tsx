@@ -36,7 +36,7 @@ export function BarcodeScanner({ onCode, onClose }: { onCode: (code: string) => 
       } catch (e) {
         if (stopped) return;
         stop(); setFailed(true);
-        const name = e instanceof Error ? e.name : '';
+        const name = e && typeof e === 'object' && 'name' in e ? String(e.name) : '';
         setStatus(name === 'NotAllowedError' ? 'Izin kamera ditolak. Izinkan kamera pada pengaturan situs Chrome, atau gunakan input manual.' : name === 'NotFoundError' ? 'Kamera tidak ditemukan. Gunakan input manual atau scanner USB/Bluetooth.' : e instanceof Error && e.message.startsWith('Kamera membutuhkan') ? e.message : 'Kamera gagal dibuka atau sedang dipakai aplikasi lain. Tutup aplikasi kamera lalu coba lagi.');
       }
     };
