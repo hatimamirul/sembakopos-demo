@@ -21,7 +21,7 @@ function Opname() {
   const save = () => {
     if (!p) return;
     if (n === null) return setMsg({ ok: false, t: "Stok fisik harus angka bulat ≥ 0." });
-    setState(addOpname(state, p.id, n, note.trim()));
+    if (!setState(addOpname(state, p.id, n, note.trim()))) return;
     setMsg({ ok: true, t: `Stok ${p.name} dikoreksi menjadi ${formatNum(n)} ${p.baseUnit}.` });
     setCount(""); setNote("");
   };
