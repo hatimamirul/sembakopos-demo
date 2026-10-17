@@ -11,7 +11,7 @@ describe('Upgrade SembakoPOS', () => {
     let state = seed(); const sale = checkout(state, [line(5)], 0, 110000); if (!sale.ok) throw Error('checkout'); state = sale.state;
     const purchase = addPurchase(state, 'minyak', 'karton', 1, 222000, 'Pemasok'); if (!purchase.ok) throw Error('purchase');
     state = addOpname(purchase.state, 'minyak', 30, 'hitung fisik');
-    const raw = JSON.stringify(state), storage = { getItem: vi.fn(() => raw) };
+    const raw = JSON.stringify(state), storage = { getItem: vi.fn((_key: string) => raw) };
     const migrated = loadState(storage);
     expect(migrated.txs).toEqual(state.txs); expect(migrated.purchases).toEqual(state.purchases); expect(migrated.opnames).toEqual(state.opnames);
     expect(migrated.products[0]?.stock).toBe(30); expect(migrated.products[0]?.packages).toEqual(state.products[0]?.packages);
