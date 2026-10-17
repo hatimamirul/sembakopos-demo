@@ -14,6 +14,7 @@ import { Route as BarangRouteImport } from './routes/barang'
 import { Route as KulakanRouteImport } from './routes/kulakan'
 import { Route as LaporanRouteImport } from './routes/laporan'
 import { Route as OpnameRouteImport } from './routes/opname'
+import { Route as PengaturanRouteImport } from './routes/pengaturan'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -40,6 +41,11 @@ const OpnameRoute = OpnameRouteImport.update({
   path: '/opname',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PengaturanRoute = PengaturanRouteImport.update({
+  id: '/pengaturan',
+  path: '/pengaturan',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -47,6 +53,7 @@ export interface FileRoutesByFullPath {
   '/kulakan': typeof KulakanRoute
   '/laporan': typeof LaporanRoute
   '/opname': typeof OpnameRoute
+  '/pengaturan': typeof PengaturanRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -54,6 +61,7 @@ export interface FileRoutesByTo {
   '/kulakan': typeof KulakanRoute
   '/laporan': typeof LaporanRoute
   '/opname': typeof OpnameRoute
+  '/pengaturan': typeof PengaturanRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -62,13 +70,22 @@ export interface FileRoutesById {
   '/kulakan': typeof KulakanRoute
   '/laporan': typeof LaporanRoute
   '/opname': typeof OpnameRoute
+  '/pengaturan': typeof PengaturanRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/barang' | '/kulakan' | '/laporan' | '/opname'
+  fullPaths:
+    '/' | '/barang' | '/kulakan' | '/laporan' | '/opname' | '/pengaturan'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/barang' | '/kulakan' | '/laporan' | '/opname'
-  id: '__root__' | '/' | '/barang' | '/kulakan' | '/laporan' | '/opname'
+  to: '/' | '/barang' | '/kulakan' | '/laporan' | '/opname' | '/pengaturan'
+  id:
+    | '__root__'
+    | '/'
+    | '/barang'
+    | '/kulakan'
+    | '/laporan'
+    | '/opname'
+    | '/pengaturan'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -77,6 +94,7 @@ export interface RootRouteChildren {
   KulakanRoute: typeof KulakanRoute
   LaporanRoute: typeof LaporanRoute
   OpnameRoute: typeof OpnameRoute
+  PengaturanRoute: typeof PengaturanRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -116,6 +134,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OpnameRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/pengaturan': {
+      id: '/pengaturan'
+      path: '/pengaturan'
+      fullPath: '/pengaturan'
+      preLoaderRoute: typeof PengaturanRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -125,6 +150,7 @@ const rootRouteChildren: RootRouteChildren = {
   KulakanRoute: KulakanRoute,
   LaporanRoute: LaporanRoute,
   OpnameRoute: OpnameRoute,
+  PengaturanRoute: PengaturanRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
