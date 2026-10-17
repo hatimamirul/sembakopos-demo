@@ -18,11 +18,11 @@ export function readBackup(json: string): State {
   let document: unknown;
   try { document = JSON.parse(json); }
   catch { throw new Error('Berkas bukan JSON yang valid. Data sebelumnya tidak diubah.'); }
-  if (!object(document) || document.format !== FORMAT || document.version !== 1) {
+  if (!object(document) || document['format'] !== FORMAT || document['version'] !== 1) {
     throw new Error('Format cadangan tidak cocok dengan SembakoPOS. Data sebelumnya tidak diubah.');
   }
 
-  const state = migrateState(document.state);
+  const state = migrateState(document['state']);
   const validProduct = state.products.every(p =>
     object(p) && text(p.id) && text(p.name) && text(p.baseUnit) &&
     nonnegative(p.cost) && nonnegative(p.stock) && Array.isArray(p.packages) &&
