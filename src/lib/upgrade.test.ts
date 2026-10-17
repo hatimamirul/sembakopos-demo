@@ -61,8 +61,8 @@ describe('Upgrade SembakoPOS', () => {
     const css80 = receiptDocument(sampleReceipt, defaultProfile, { ...defaultReceipt, paper: '80' });
     expect(css58).toContain('width: 58mm');
     expect(css80).toContain('width: 80mm');
-    expect(css58).toContain('padding: 3mm');
-    expect(css80).toContain('padding: 3mm');
+    expect(css58).toContain('padding: 2.5mm 3mm 3mm');
+    expect(css80).toContain('padding: 2.5mm 3mm 3mm');
     expect(css58).toContain('break-inside: auto');
     expect(css80).toContain('break-inside: auto');
   });
