@@ -18,6 +18,7 @@ function Pengaturan() {
   const backupInput = useRef<HTMLInputElement>(null);
   const [backupMessage, setBackupMessage] = useState('');
   const [previewTx, setPreviewTx] = useState<'last' | 'sample'>('last');
+  const [previewHeight, setPreviewHeight] = useState(320);
   const tx = previewTx === 'last' ? state.txs[0] ?? sampleReceipt : sampleReceipt;
   const save = () => { setMessage(''); if (setState({ ...state, profile, receipt })) setMessage('Pengaturan tersimpan di browser ini.'); };
   const downloadBackup = () => {
@@ -64,7 +65,24 @@ function Pengaturan() {
         <Button disabled={!ready} onClick={save}><Save />Simpan pengaturan</Button>{message && <p role="status" className="text-success text-sm">{message}</p>}
       </section>
       <section className="space-y-3 min-w-0"><div className="flex flex-wrap justify-between items-center gap-2"><h2 className="font-bold">Pratinjau struk · {receipt.paper} mm</h2><select aria-label="Transaksi pratinjau" className="field !w-auto" value={previewTx} onChange={e => setPreviewTx(e.target.value === 'sample' ? 'sample' : 'last')}><option value="last">{state.txs.length ? 'Transaksi terakhir' : 'Transaksi contoh'}</option><option value="sample">Transaksi contoh</option></select></div>
-        <iframe title="Pratinjau struk thermal" sandbox="" srcDoc={receiptDocument(tx, profile, receipt)} className="w-full h-[560px] border rounded-md bg-card" />
+        <div className="rounded-lg border bg-muted/40 px-3 py-5 overflow-x-auto">
+          <iframe
+            title="Pratinjau struk thermal"
+            sandbox="allow-same-origin"
+            srcDoc={receiptDocument(tx, profile, receipt)}
+            className="block mx-auto max-w-full border-0 bg-white shadow-md"
+            style={{ width: `${receipt.paper}mm`, height: previewHeight }}
+            onLoad={(event) => {
+              // Skrip tetap diblokir oleh sandbox. Ukur artikel struk, bukan
+              // scrollHeight dokumen yang minimal setinggi viewport iframe.
+              const article = event.currentTarget.contentDocument?.querySelector('.thermal-receipt');
+              if (!article) return;
+              const measured = Math.ceil(article.getBoundingClientRect().height + 2);
+              setPreviewHeight(Math.max(140, Math.min(1800, measured)));
+            }}
+          />
+        </div>
+        <p className="text-xs text-muted-foreground">Pratinjau menyesuaikan lebar kertas {receipt.paper} mm dan panjang isi struk. Saat mencetak, pastikan ukuran kertas dan margin printer sesuai.</p>
         <Button variant="outline" onClick={() => printReceipt(tx, profile, receipt)}><Printer />Cetak uji struk</Button>
       </section>
     </div>
