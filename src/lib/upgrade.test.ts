@@ -72,15 +72,55 @@ describe('Upgrade SembakoPOS', () => {
     expect(doc.querySelector('.receipt-item-name')?.textContent).toBe('Minyak Goreng Pouch 1 L');
     expect(doc.querySelector('.receipt-item-package')).toBeNull();
     const row = doc.querySelector('.receipt-item-prices');
-    expect(row?.children).toHaveLength(2);
-    expect(row?.children[0]?.textContent).toContain('21.000');
-    expect(row?.children[1]?.textContent).toContain('105.000');
+    expect(row?.children).toHaveLength(3);
+    expect(row?.children[0]?.textContent).toContain('5 × 21.000');
+    expect(row?.children[1]?.textContent).toBe('Rp');
+    expect(row?.children[2]?.textContent).toBe('105.000');
     expect(doc.querySelector('.receipt-total > span:first-child')?.textContent).toBe('TOTAL');
     expect(doc.querySelector('.receipt-summary .receipt-row:last-child > span:last-child')?.textContent).toContain('5.000');
     const css = doc.querySelector('style')?.textContent ?? '';
-    expect(css).toContain('grid-template-columns: minmax(0, 1fr) max-content');
+    expect(css).toContain('grid-template-columns: minmax(0, 1fr) 2.2ch var(--receipt-amount-width, 9ch)');
     expect(css).toContain('white-space: nowrap');
     expect(css).toContain('font-variant-numeric: tabular-nums');
+  });
+  it('lines up every Rp in one shared currency column for 58 and 80 mm', () => {
+    for (const paper of ['58', '80'] as const) {
+      const doc = new DOMParser().parseFromString(
+        receiptDocument(sampleReceipt, defaultProfile, { ...defaultReceipt, paper }),
+        'text/html'
+      );
+      const rows = Array.from(doc.querySelectorAll('.receipt-row'));
+      expect(rows).toHaveLength(5); // barang, subtotal, total, tunai, kembalian
+      const currencies = rows.map(row => row.children[1]);
+      const numbers = rows.map(row => row.children[2]);
+      expect(currencies.every(el => el?.className === 'receipt-currency' && el.textContent === 'Rp')).toBe(true);
+      expect(numbers.every(el => el?.className === 'receipt-amount')).toBe(true);
+      expect(numbers.map(el => el.textContent)).toEqual(['105.000', '105.000', '105.000', '110.000', '5.000']);
+      expect(doc.querySelector('.thermal-receipt')?.getAttribute('style')).toContain('--receipt-amount-width:9ch');
+      // Harga satuan tidak lagi membuat Rp yang muncul di kolom kiri.
+      expect(rows[0]?.children[0]?.textContent).not.toContain('Rp');
+      const css = doc.querySelector('style')?.textContent ?? '';
+      expect(css).toContain('grid-template-columns: minmax(0, 1fr) 2.2ch var(--receipt-amount-width, 9ch)');
+      expect(css).toContain('.receipt-total > span { font-weight: 800; }');
+    }
+  });
+  it('uses the widest amount to align Rp on larger values and negative discounts', () => {
+    const bigTx = {
+      ...sampleReceipt,
+      items: sampleReceipt.items.map(item => ({ ...item, subtotal: 123456789012 })),
+      subtotal: 123456789012,
+      discount: 12000,
+      total: 123456777012,
+      paid: 123456780000,
+      change: 2988,
+    };
+    const doc = new DOMParser().parseFromString(receiptDocument(bigTx), 'text/html');
+    const rows = Array.from(doc.querySelectorAll('.receipt-row'));
+    expect(rows).toHaveLength(6);
+    expect(doc.querySelector('.thermal-receipt')?.getAttribute('style')).toContain('--receipt-amount-width:');
+    expect(rows.every(row => row.querySelectorAll('.receipt-currency').length === 1 && row.querySelectorAll('.receipt-amount').length === 1)).toBe(true);
+    expect(doc.querySelector('.receipt-summary .receipt-row:nth-child(2) .receipt-amount')?.textContent).toBe('-12.000');
+    expect(doc.querySelector('.receipt-items .receipt-amount')?.textContent).toBe('123.456.789.012');
   });
   it('uses compact sans-serif typography and a short demo header for both paper sizes', () => {
     for (const paper of ['58', '80'] as const) {
