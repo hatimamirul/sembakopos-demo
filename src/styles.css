@@ -62,8 +62,8 @@
 }
 
 :root {
-  --radius: 0.75rem;
-  --background: oklch(0.975 0.008 95);
+  --radius: 0.5rem;
+  --background: oklch(0.975 0.004 160);
   --foreground: oklch(0.22 0.03 160);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.22 0.03 160);
@@ -107,7 +107,7 @@
 @utility card {
   background: var(--card);
   border: 1px solid var(--border);
-  border-radius: var(--radius-xl);
+  border-radius: var(--radius);
   box-shadow: var(--shadow-card);
 }
 @utility field {
@@ -131,6 +131,9 @@
 @utility label { display:block; font-size: .8rem; font-weight: 600; color: var(--muted-foreground); margin-bottom: .25rem; }
 
 @layer base {
+  button, input:not([type="checkbox"]), select { min-height: 44px; }
+  button { white-space: normal; }
+  h1, h2, h3 { letter-spacing: 0; }
   * {
     border-color: var(--color-border);
   }

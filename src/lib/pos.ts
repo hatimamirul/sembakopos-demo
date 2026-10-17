@@ -7,6 +7,8 @@ export type Pkg = {
   wholesale: number; // harga grosir per kemasan (0 = tidak ada)
   wholesaleMin: number; // ambang grosir (jumlah kemasan)
 };
+import type { ShopProfile, ReceiptSettings } from './settings';
+
 export type Product = {
   id: string;
   name: string;
@@ -14,6 +16,8 @@ export type Product = {
   cost: number; // harga modal per satuan dasar
   stock: number; // stok dalam satuan dasar
   packages: Pkg[];
+  image?: string;
+  barcode?: string;
 };
 export type CartLine = { uid: string; productId: string; pkgId: string; qty: number };
 export type TxItem = {
@@ -58,7 +62,7 @@ export type Opname = {
   diff: number;
   note: string;
 };
-export type State = { products: Product[]; txs: Tx[]; purchases: Purchase[]; opnames: Opname[] };
+export type State = { products: Product[]; txs: Tx[]; purchases: Purchase[]; opnames: Opname[]; profile?: ShopProfile; receipt?: ReceiptSettings };
 
 export const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
 
@@ -172,7 +176,8 @@ export function stockProblems(products: Product[], cart: CartLine[]): string[] {
   for (const it of priceCart(products, cart)) need.set(it.productId, (need.get(it.productId) ?? 0) + it.baseQty);
   const errs: string[] = [];
   for (const [id, n] of need) {
-    const p = products.find((x) => x.id === id)!;
+    const p = products.find((x) => x.id === id);
+    if (!p) continue;
     if (n > p.stock) errs.push(`Stok ${p.name} tidak cukup: butuh ${formatNum(n)} ${p.baseUnit}, tersedia ${formatNum(p.stock)} ${p.baseUnit}.`);
   }
   return errs;
@@ -220,7 +225,8 @@ export function addPurchase(state: State, productId: string, pkgId: string, qty:
 }
 
 export function addOpname(state: State, productId: string, after: number, note: string): State {
-  const p = state.products.find((x) => x.id === productId)!;
+  const p = state.products.find((x) => x.id === productId);
+  if (!p) return state;
   const rec: Opname = { id: uid(), date: new Date().toISOString(), productId, name: p.name, before: p.stock, after, diff: after - p.stock, note };
   return {
     ...state,

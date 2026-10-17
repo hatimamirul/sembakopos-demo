@@ -28,7 +28,7 @@ function Kulakan() {
     if (pr === null) return setMsg({ ok: false, t: "Harga beli per kemasan harus angka bulat ≥ 1." });
     const r = addPurchase(state, p.id, pkg.id, q, pr, supplier.trim());
     if (!r.ok) return setMsg({ ok: false, t: r.error });
-    setState(r.state);
+    if (!setState(r.state)) return;
     setMsg({ ok: true, t: `Stok ${p.name} bertambah ${formatNum(q * pkg.factor)} ${p.baseUnit}.` });
     setQty("1"); setPrice("");
   };
