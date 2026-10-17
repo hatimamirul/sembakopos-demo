@@ -54,7 +54,7 @@ describe('Upgrade SembakoPOS', () => {
     const profile = { ...defaultProfile, name: '<script>alert(1)</script>', phone: 'SECRET_PHONE', address: '<img src=x onerror=alert(1)>' };
     const settings = { ...defaultReceipt, paper: '80' as const, visible: { ...defaultReceipt.visible, phone: false, items: false }, footerText: '<b>Terima kasih</b>' };
     const doc = receiptDocument(sampleReceipt, profile, settings), dom = new DOMParser().parseFromString(doc, 'text/html');
-    expect(dom.querySelector('script')).toBeNull(); expect(dom.querySelector('h1')?.textContent).toBe(profile.name); expect(dom.body.textContent).not.toContain('SECRET_PHONE'); expect(dom.querySelector('.receipt-items')).toBeNull(); expect(dom.querySelector('style')?.textContent).toContain('width:80mm'); expect(receiptDocument(sampleReceipt)).toContain('width:58mm'); expect(doc).toContain('@page { size: auto; margin: 0; }'); expect(dom.querySelector('footer')?.textContent).toBe(settings.footerText);
+    expect(dom.querySelector('script')).toBeNull(); expect(dom.querySelector('h1')?.textContent).toBe(profile.name); expect(dom.body.textContent).not.toContain('SECRET_PHONE'); expect(dom.querySelector('.receipt-items')).toBeNull(); expect(dom.querySelector('style')?.textContent).toContain('width: 80mm'); expect(receiptDocument(sampleReceipt)).toContain('width: 58mm'); expect(doc).toContain('@page { size: auto; margin: 0; }'); expect(dom.querySelector('footer')?.textContent).toBe(settings.footerText);
   });
   it('receipt body uses safe paper insets and permits multi-page printing', () => {
     const css58 = receiptDocument(sampleReceipt);
