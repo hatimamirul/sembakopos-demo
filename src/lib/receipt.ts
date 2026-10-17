@@ -5,7 +5,7 @@ export const escapeHtml = (text: string) => text.replace(/[&<>"']/g, c => ({ '&'
 /** Jangan cetak nama kemasan dua kali bila sudah tercantum dalam nama produk. */
 function needsPackagingLabel(productName: string, packageName: string): boolean {
   const normalize = (value: string) =>
-    value.toLocaleLowerCase('id-ID').replace(/[^\\p{L}\\p{N}]+/gu, ' ').trim();
+    value.toLocaleLowerCase('id-ID').replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
   const packageText = normalize(packageName);
   return !!packageText && !(` ${normalize(productName)} `.includes(` ${packageText} `));
 }
