@@ -38,7 +38,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <Button variant="link" className="text-xs text-muted-foreground whitespace-normal" onClick={() => setInfo(!info)}>
             Demo belum sinkron antar perangkat
           </Button>
-          <Button disabled={!ready} className="btn btn-danger ml-auto !py-1.5 text-xs"
+          <Button variant="ghost" disabled={!ready} className="btn btn-danger ml-auto !py-1.5 text-xs"
             onClick={() => confirm("Reset semua data ke data sampel? Transaksi, kulakan & opname akan dihapus.") && reset()}>
             Reset data sampel
           </Button>

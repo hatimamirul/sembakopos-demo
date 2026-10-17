@@ -21,7 +21,7 @@ function ProductCard({ p, onAdd }: { p: Product; onAdd: (pkgId: string, qty: num
   const pkg = p.packages.find((x) => x.id === pkgId);
   const q = parseIntStrict(qty, 1);
   return (
-    <div className="card p-3 flex flex-col gap-2">
+    <div className="card p-3 min-w-0 flex flex-col gap-2">
       <ProductImage src={p.image} name={p.name} className="w-full h-28" />
       <div className="flex flex-wrap justify-between gap-2">
         <div className="font-bold leading-tight">{p.name}</div>
@@ -42,7 +42,7 @@ function ProductCard({ p, onAdd }: { p: Product; onAdd: (pkgId: string, qty: num
       <div className="flex gap-2 mt-auto">
         <input className="field !w-20 text-center" inputMode="numeric" value={qty} aria-label={`Jumlah ${p.name}`}
           onChange={(e) => setQty(e.target.value)} />
-        <Button className="btn btn-primary flex-1" disabled={!q || !pkg}
+        <Button className="btn btn-primary flex-1 min-w-0 !px-2" disabled={!q || !pkg}
           onClick={() => { if (q && pkg) { onAdd(pkg.id, q); setQty("1"); } }}>
           + Tambah
         </Button>
@@ -114,7 +114,7 @@ function Kasir() {
           <div className="flex gap-2 mb-3"><input className="field min-w-0" aria-label="Cari barang" placeholder="Cari nama / barcode…" value={search} onChange={(e) => setSearch(e.target.value)} /><Button variant="outline" onClick={() => setScanning(true)}><ScanBarcode />Scan barcode</Button></div>
           <form className="flex flex-wrap gap-2 mb-4" onSubmit={e => { e.preventDefault(); handleCode(barcode); }}><input className="field flex-1 min-w-[140px]" aria-label="Kode barcode" placeholder="Ketik / scan USB atau Bluetooth" value={barcode} onChange={e => setBarcode(e.target.value)} autoComplete="off" /><Button type="submit" variant="secondary">Cari kode</Button></form>
           {barcodeError && <p role="alert" className="text-destructive bg-destructive/10 p-3 text-sm rounded-md mb-3">{barcodeError}</p>}
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="grid gap-3 grid-cols-[repeat(auto-fit,minmax(min(100%,230px),1fr))]">
             {list.map((p) => <ProductCard key={p.id} p={p} onAdd={(k, q) => add(p.id, k, q)} />)}
             {list.length === 0 && <p className="text-muted-foreground text-sm">Barang tidak ditemukan.</p>}
           </div>
@@ -196,7 +196,7 @@ function Kasir() {
             <div className="text-2xl font-extrabold text-success">Kembali {formatRp(done.change)}</div>
             <div className="flex gap-2 pt-2">
               <Button className="btn btn-soft flex-1" onClick={() => printReceipt(done, state.profile, state.receipt)}>Cetak Struk</Button>
-              <Button className="btn btn-primary flex-1" onClick={() => setDone(null)}>Transaksi Baru</Button>
+              <Button className="btn btn-primary flex-1 min-w-0 !px-2" onClick={() => setDone(null)}>Transaksi Baru</Button>
             </div>
           </div>
         </div>

@@ -74,7 +74,7 @@ function Barang() {
               <div><label className="label" htmlFor={`barang-7-${k.id}`}>Harga ecer</label><input id={`barang-7-${k.id}`} className="field" inputMode="numeric" value={k.retail} onChange={(e) => setPkg(i, "retail", e.target.value)} /></div>
               <div><label className="label" htmlFor={`barang-8-${k.id}`}>Harga grosir</label><input id={`barang-8-${k.id}`} className="field" inputMode="numeric" value={k.wholesale} onChange={(e) => setPkg(i, "wholesale", e.target.value)} /></div>
               <div><label className="label" htmlFor={`barang-9-${k.id}`}>Grosir mulai</label><input id={`barang-9-${k.id}`} className="field" inputMode="numeric" value={k.wholesaleMin} onChange={(e) => setPkg(i, "wholesaleMin", e.target.value)} /></div>
-              <Button className="btn btn-danger" onClick={() => setF({ ...f, packages: f.packages.filter((_, j) => j !== i) })}>Hapus</Button>
+              <Button variant="ghost" className="btn btn-danger" onClick={() => setF({ ...f, packages: f.packages.filter((_, j) => j !== i) })}>Hapus</Button>
             </div>
           ))}
         </div>
@@ -89,7 +89,7 @@ function Barang() {
 
       <div className="grid gap-3 md:grid-cols-2">
         {state.products.map((p) => (
-          <div key={p.id} className="card p-4">
+          <div key={p.id} className="card p-4 min-w-0">
             <div className="flex justify-between items-start gap-2">
               <ProductImage src={p.image} name={p.name} className="size-16" />
               <div>
