@@ -1,0 +1,25 @@
+name: Pemeriksaan SembakoPOS
+on:
+  push:
+    branches: [main, 'chatgpt/**']
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  kualitas:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Siapkan Bun
+        uses: oven-sh/setup-bun@v2
+      - name: Instal dependensi
+        run: bun install --frozen-lockfile
+      - name: ESLint pada logika backup baru (tanpa aturan format lama)
+        run: "bunx eslint src/lib/backup.ts src/lib/backup.test.ts --rule 'prettier/prettier: off'"
+      - name: Periksa TypeScript
+        run: bunx tsc --noEmit
+      - name: Pengujian otomatis
+        run: bun run test
+      - name: Build website
+        run: bun run build

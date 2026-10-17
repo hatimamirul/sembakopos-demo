@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
+import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ImageUpload } from "@/components/ImageUpload";
 import { ProductImage } from "@/components/ProductImage";
@@ -22,15 +23,24 @@ function Barang() {
   const { state, setState, ready } = useStore();
   const [f, setF] = useState<Form>(empty);
   const [err, setErr] = useState("");
+  const [lastPackageId, setLastPackageId] = useState("");
 
   const edit = (p: Product) => {
     setF({ id: p.id, name: p.name, baseUnit: p.baseUnit, cost: String(p.cost), stock: String(p.stock), image: p.image ?? "", barcode: p.barcode ?? "",
       packages: p.packages.map((k) => ({ id: k.id, name: k.name, factor: String(k.factor), retail: String(k.retail), wholesale: String(k.wholesale), wholesaleMin: String(k.wholesaleMin) })) });
     setErr("");
+    setLastPackageId("");
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
   const setPkg = (i: number, key: keyof PkgForm, v: string) =>
     setF({ ...f, packages: f.packages.map((k, j) => (j === i ? { ...k, [key]: v } : k)) });
+
+  const addPackage = () => {
+    const pkg = emptyPkg();
+    setF(current => ({ ...current, packages: [...current.packages, pkg] }));
+    setLastPackageId(pkg.id);
+    setErr("");
+  };
 
   const save = () => {
     const cost = parseIntStrict(f.cost, 0), stock = parseIntStrict(f.stock, 0);
@@ -50,7 +60,7 @@ function Barang() {
     if (barcodeConflict(state.products, f.barcode, f.id)) return setErr("Barcode sudah digunakan barang lain. Setiap barcode harus unik.");
     const p: Product = { id: f.id ?? uid(), name: f.name.trim(), baseUnit: f.baseUnit.trim(), cost, stock, packages, image: f.image, barcode: f.barcode.trim() };
     if (!setState({ ...state, products: f.id ? state.products.map((x) => (x.id === f.id ? p : x)) : [...state.products, p] })) return;
-    setF(empty()); setErr("");
+    setF(empty()); setErr(""); setLastPackageId("");
   };
 
   return (
@@ -68,7 +78,7 @@ function Barang() {
         <h3 className="font-semibold mt-4 mb-2 text-sm">Kemasan / varian jual</h3>
         <div className="space-y-2">
           {f.packages.map((k, i) => (
-            <div key={k.id} className="grid gap-2 grid-cols-2 md:grid-cols-[2fr_1fr_1fr_1fr_1fr_auto] items-end rounded-lg bg-muted p-2">
+            <div key={k.id} className={`grid gap-2 grid-cols-2 md:grid-cols-[2fr_1fr_1fr_1fr_1fr_auto] items-end rounded-lg bg-muted p-2 ${lastPackageId === k.id ? "ring-2 ring-emerald-500/70 bg-emerald-50/60" : ""}`}>
               <div><label className="label" htmlFor={`barang-5-${k.id}`}>Nama kemasan</label><input id={`barang-5-${k.id}`} className="field" value={k.name} onChange={(e) => setPkg(i, "name", e.target.value)} /></div>
               <div><label className="label" htmlFor={`barang-6-${k.id}`}>Isi ({f.baseUnit || "satuan"})</label><input id={`barang-6-${k.id}`} className="field" inputMode="numeric" value={k.factor} onChange={(e) => setPkg(i, "factor", e.target.value)} /></div>
               <div><label className="label" htmlFor={`barang-7-${k.id}`}>Harga ecer</label><input id={`barang-7-${k.id}`} className="field" inputMode="numeric" value={k.retail} onChange={(e) => setPkg(i, "retail", e.target.value)} /></div>
@@ -81,10 +91,13 @@ function Barang() {
         <p className="text-xs text-muted-foreground mt-2">Isi harga grosir 0 jika tidak ada harga grosir.</p>
         {err && <div className="mt-3 rounded-md bg-destructive/10 text-destructive text-sm p-2 font-semibold">{err}</div>}
         <div className="flex flex-wrap gap-2 mt-3">
-          <Button className="btn btn-soft" onClick={() => setF({ ...f, packages: [...f.packages, emptyPkg()] })}>+ Kemasan</Button>
+          <Button type="button" className="bg-emerald-600 text-white hover:bg-emerald-700 font-bold gap-2" aria-label="Tambah kemasan baru" onClick={addPackage}><Plus size={18} aria-hidden="true" /> Tambah Kemasan</Button>
           <Button className="btn btn-primary" disabled={!ready} onClick={save}>{f.id ? "Simpan perubahan" : "Simpan barang"}</Button>
-          {f.id && <Button className="btn btn-soft" onClick={() => setF(empty())}>Batal</Button>}
+          {f.id && <Button className="btn btn-soft" onClick={() => { setF(empty()); setLastPackageId(""); }}>Batal</Button>}
         </div>
+        <p className="mt-2 text-xs text-muted-foreground" aria-live="polite">
+          {lastPackageId ? <span className="font-semibold text-emerald-700">✓ Baris kemasan baru ditambahkan. Isi nama, konversi, dan harga, lalu klik Simpan barang.</span> : `Saat ini ada ${f.packages.length} pilihan kemasan.`}
+        </p>
       </section>
 
       <div className="grid gap-3 md:grid-cols-2">

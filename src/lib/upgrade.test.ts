@@ -54,7 +54,110 @@ describe('Upgrade SembakoPOS', () => {
     const profile = { ...defaultProfile, name: '<script>alert(1)</script>', phone: 'SECRET_PHONE', address: '<img src=x onerror=alert(1)>' };
     const settings = { ...defaultReceipt, paper: '80' as const, visible: { ...defaultReceipt.visible, phone: false, items: false }, footerText: '<b>Terima kasih</b>' };
     const doc = receiptDocument(sampleReceipt, profile, settings), dom = new DOMParser().parseFromString(doc, 'text/html');
-    expect(dom.querySelector('script')).toBeNull(); expect(dom.querySelector('h1')?.textContent).toBe(profile.name); expect(dom.body.textContent).not.toContain('SECRET_PHONE'); expect(dom.querySelector('.receipt-items')).toBeNull(); expect(dom.querySelector('style')?.textContent).toContain('size:80mm auto'); expect(receiptDocument(sampleReceipt)).toContain('size:58mm auto'); expect(dom.querySelector('footer')?.textContent).toBe(settings.footerText);
+    expect(dom.querySelector('script')).toBeNull(); expect(dom.querySelector('h1')?.textContent).toBe(profile.name); expect(dom.body.textContent).not.toContain('SECRET_PHONE'); expect(dom.querySelector('.receipt-items')).toBeNull(); expect(dom.querySelector('style')?.textContent).toContain('width: 80mm'); expect(receiptDocument(sampleReceipt)).toContain('width: 58mm'); expect(doc).toContain('@page { size: auto; margin: 0; }'); expect(dom.querySelector('footer')?.textContent).toBe(settings.footerText);
+  });
+  it('receipt body uses safe paper insets and permits multi-page printing', () => {
+    const css58 = receiptDocument(sampleReceipt);
+    const css80 = receiptDocument(sampleReceipt, defaultProfile, { ...defaultReceipt, paper: '80' });
+    expect(css58).toContain('width: 58mm');
+    expect(css80).toContain('width: 80mm');
+    expect(css58).toContain('padding: 2.5mm 3mm 3mm');
+    expect(css80).toContain('padding: 2.5mm 3mm 3mm');
+    expect(css58).toContain('break-inside: auto');
+    expect(css80).toContain('break-inside: auto');
+  });
+  it('separates item, packaging, unit-price and subtotal and right-aligns amounts', () => {
+    const markup = receiptDocument(sampleReceipt, defaultProfile, { ...defaultReceipt, paper: '80' });
+    const doc = new DOMParser().parseFromString(markup, 'text/html');
+    expect(doc.querySelector('.receipt-item-name')?.textContent).toBe('Minyak Goreng Pouch 1 L');
+    expect(doc.querySelector('.receipt-item-package')).toBeNull();
+    const row = doc.querySelector('.receipt-item-prices');
+    expect(row?.children).toHaveLength(3);
+    expect(row?.children[0]?.textContent).toContain('5 × 21.000');
+    expect(row?.children[1]?.textContent).toBe('Rp');
+    expect(row?.children[2]?.textContent).toBe('105.000');
+    expect(doc.querySelector('.receipt-total > span:first-child')?.textContent).toBe('TOTAL');
+    expect(doc.querySelector('.receipt-summary .receipt-row:last-child > span:last-child')?.textContent).toContain('5.000');
+    const css = doc.querySelector('style')?.textContent ?? '';
+    expect(css).toContain('grid-template-columns: minmax(0, 1fr) 2.2ch var(--receipt-amount-width, 9ch)');
+    expect(css).toContain('white-space: nowrap');
+    expect(css).toContain('font-variant-numeric: tabular-nums');
+  });
+  it('lines up every Rp in one shared currency column for 58 and 80 mm', () => {
+    for (const paper of ['58', '80'] as const) {
+      const doc = new DOMParser().parseFromString(
+        receiptDocument(sampleReceipt, defaultProfile, { ...defaultReceipt, paper }),
+        'text/html'
+      );
+      const rows = Array.from(doc.querySelectorAll('.receipt-row'));
+      expect(rows).toHaveLength(5); // barang, subtotal, total, tunai, kembalian
+      const currencies = rows.map(row => row.children[1]);
+      const numbers = rows.map(row => row.children[2]);
+      expect(currencies.every(el => el?.className === 'receipt-currency' && el.textContent === 'Rp')).toBe(true);
+      expect(numbers.every(el => el?.className === 'receipt-amount')).toBe(true);
+      expect(numbers.map(el => el?.textContent)).toEqual(['105.000', '105.000', '105.000', '110.000', '5.000']);
+      expect(doc.querySelector('.thermal-receipt')?.getAttribute('style')).toContain('--receipt-amount-width:9ch');
+      // Harga satuan tidak lagi membuat Rp yang muncul di kolom kiri.
+      expect(rows[0]?.children[0]?.textContent).not.toContain('Rp');
+      const css = doc.querySelector('style')?.textContent ?? '';
+      expect(css).toContain('grid-template-columns: minmax(0, 1fr) 2.2ch var(--receipt-amount-width, 9ch)');
+      expect(css).toContain('.receipt-total > span { font-weight: 800; }');
+    }
+  });
+  it('uses the widest amount to align Rp on larger values and negative discounts', () => {
+    const bigTx = {
+      ...sampleReceipt,
+      items: sampleReceipt.items.map(item => ({ ...item, subtotal: 123456789012 })),
+      subtotal: 123456789012,
+      discount: 12000,
+      total: 123456777012,
+      paid: 123456780000,
+      change: 2988,
+    };
+    const doc = new DOMParser().parseFromString(receiptDocument(bigTx), 'text/html');
+    const rows = Array.from(doc.querySelectorAll('.receipt-row'));
+    expect(rows).toHaveLength(6);
+    expect(doc.querySelector('.thermal-receipt')?.getAttribute('style')).toContain('--receipt-amount-width:');
+    expect(rows.every(row => row.querySelectorAll('.receipt-currency').length === 1 && row.querySelectorAll('.receipt-amount').length === 1)).toBe(true);
+    expect(doc.querySelector('.receipt-summary .receipt-row:nth-child(2) .receipt-amount')?.textContent).toBe('-12.000');
+    expect(doc.querySelector('.receipt-items .receipt-amount')?.textContent).toBe('123.456.789.012');
+  });
+  it('uses compact sans-serif typography and a short demo header for both paper sizes', () => {
+    for (const paper of ['58', '80'] as const) {
+      const doc = new DOMParser().parseFromString(
+        receiptDocument(sampleReceipt, defaultProfile, { ...defaultReceipt, paper }),
+        'text/html'
+      );
+      const css = doc.querySelector('style')?.textContent ?? '';
+      expect(css).toContain('Arial, Helvetica, sans-serif');
+      expect(css).toContain('letter-spacing: normal');
+      expect(css).toContain('line-height: 1.2');
+      expect(doc.querySelector('.receipt-demo')?.textContent).toBe('STRUK DEMO · TIDAK RESMI');
+    }
+  });
+  it('shows packaging only when it is not already a complete word in the product name', () => {
+    const makeDoc = (name: string, pkgName: string) => {
+      const tx = { ...sampleReceipt, items: [{ ...sampleReceipt.items[0]!, name, pkgName }] };
+      return new DOMParser().parseFromString(receiptDocument(tx), 'text/html');
+    };
+    expect(makeDoc('Minyak Goreng Pouch 1 L', 'Pouch').querySelector('.receipt-item-package')).toBeNull();
+    expect(makeDoc('Pouchman Minyak Goreng', 'Pouch').querySelector('.receipt-item-package')?.textContent).toBe('Kemasan: Pouch');
+    expect(makeDoc('Beras Medium', 'Karung 25 kg').querySelector('.receipt-item-package')?.textContent).toBe('Kemasan: Karung 25 kg');
+    expect(makeDoc('Susu Karton (12 pcs)', 'Karton (12 pcs)').querySelector('.receipt-item-package')).toBeNull();
+  });
+  it('keeps long item names safe and avoids absolute or fixed paper heights', () => {
+    const longName = 'Beras Super Premium 25 kg & Telur Segar <script>';
+    const tx = { ...sampleReceipt, items: sampleReceipt.items.map(item => ({ ...item, name: longName, pkgName: 'Karung isi 25 kilogram' })) };
+    for (const paper of ['58', '80'] as const) {
+      const doc = new DOMParser().parseFromString(receiptDocument(tx, defaultProfile, { ...defaultReceipt, paper }), 'text/html');
+      expect(doc.querySelectorAll('script')).toHaveLength(0);
+      expect(doc.querySelector('.receipt-item-name')?.textContent).toBe(longName);
+      expect(doc.querySelector('.receipt-item-package')?.textContent).toContain('Karung isi 25 kilogram');
+      const css = doc.querySelector('style')?.textContent ?? '';
+      expect(css).not.toContain('position: absolute');
+      expect(css).not.toContain('height: 200mm');
+      expect(css).toContain('break-inside: avoid');
+    }
   });
   it('popup-blocked printing reports failure', () => {
     vi.spyOn(window, 'open').mockReturnValue(null); const alert = vi.spyOn(window, 'alert').mockImplementation(() => {});

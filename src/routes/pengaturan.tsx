@@ -1,12 +1,13 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { useState } from 'react';
-import { Printer, Save } from 'lucide-react';
+import { useRef, useState } from 'react';
+import { Download, Printer, Save, Upload } from 'lucide-react';
 import { meta, PageTitle } from '@/components/AppShell';
 import { Button } from '@/components/ui/button';
 import { ImageUpload } from '@/components/ImageUpload';
 import { useStore } from '@/lib/store';
 import { defaultProfile, defaultReceipt, receiptElements, type ReceiptElement } from '@/lib/settings';
 import { printReceipt, receiptDocument, sampleReceipt } from '@/lib/receipt';
+import { createBackup, readBackup } from '@/lib/backup';
 export const Route = createFileRoute('/pengaturan')({ head: () => meta('Pengaturan Toko & Struk', 'Profil toko opsional dan pengaturan cetak struk thermal 58mm atau 80mm untuk SembakoPOS demo.'), component: Pengaturan });
 const labels: Record<ReceiptElement, string> = { logo: 'Logo toko', phone: 'Nomor HP', whatsapp: 'WhatsApp', transaction: 'Nomor transaksi', date: 'Tanggal & waktu', items: 'Rincian barang', total: 'Subtotal, diskon & total', paid: 'Uang tunai', change: 'Kembalian', footer: 'Teks footer' };
 function Pengaturan() {
@@ -14,9 +15,39 @@ function Pengaturan() {
   const [profile, setProfile] = useState(state.profile ?? defaultProfile);
   const [receipt, setReceipt] = useState(state.receipt ?? defaultReceipt);
   const [tab, setTab] = useState<'profile' | 'receipt'>('profile'), [message, setMessage] = useState('');
+  const backupInput = useRef<HTMLInputElement>(null);
+  const [backupMessage, setBackupMessage] = useState('');
   const [previewTx, setPreviewTx] = useState<'last' | 'sample'>('last');
+  const [previewHeight, setPreviewHeight] = useState(320);
   const tx = previewTx === 'last' ? state.txs[0] ?? sampleReceipt : sampleReceipt;
   const save = () => { setMessage(''); if (setState({ ...state, profile, receipt })) setMessage('Pengaturan tersimpan di browser ini.'); };
+  const downloadBackup = () => {
+    const blob = new Blob([createBackup(state)], { type: 'application/json;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `sembakopos-cadangan-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    setBackupMessage('Cadangan diunduh. Simpan berkas secara pribadi, jangan unggah ke GitHub publik.');
+  };
+  const restoreBackup = async (file: File | undefined) => {
+    if (!file) return;
+    setBackupMessage('');
+    try {
+      if (file.size > 15 * 1024 * 1024) throw new Error('Berkas cadangan melebihi 15 MB.');
+      const restored = readBackup(await file.text());
+      if (!window.confirm(`Pulihkan ${restored.products.length} barang dan ${restored.txs.length} transaksi? Ini akan MENGGANTI data di browser ini. Pastikan Anda sudah mengunduh cadangan data saat ini.`)) return;
+      if (!setState(restored)) throw new Error('Gagal menyimpan cadangan. Data sebelumnya tetap ada.');
+      setProfile(restored.profile ?? defaultProfile);
+      setReceipt(restored.receipt ?? defaultReceipt);
+      setBackupMessage('Cadangan berhasil dipulihkan ke browser ini.');
+    } catch (e) {
+      setBackupMessage(e instanceof Error ? e.message : 'Cadangan gagal dibaca.');
+    }
+  };
   const profileField = (key: 'name' | 'address' | 'phone' | 'whatsapp' | 'note', label: string) => <div key={key}><label className="label" htmlFor={`profile-${key}`}>{label}</label><input id={`profile-${key}`} className="field" value={profile[key]} type={key === 'phone' || key === 'whatsapp' ? 'tel' : 'text'} onChange={e => { setProfile({ ...profile, [key]: e.target.value }); setMessage(''); }} /></div>;
   return <><PageTitle title="Pengaturan" sub="Profil toko opsional · struk dicetak lewat dialog browser" />
     <div className="flex flex-wrap gap-2 mb-5"><Button variant={tab === 'profile' ? 'default' : 'secondary'} onClick={() => setTab('profile')}>Profil toko</Button><Button variant={tab === 'receipt' ? 'default' : 'secondary'} onClick={() => setTab('receipt')}>Struk thermal</Button></div>
@@ -34,9 +65,36 @@ function Pengaturan() {
         <Button disabled={!ready} onClick={save}><Save />Simpan pengaturan</Button>{message && <p role="status" className="text-success text-sm">{message}</p>}
       </section>
       <section className="space-y-3 min-w-0"><div className="flex flex-wrap justify-between items-center gap-2"><h2 className="font-bold">Pratinjau struk · {receipt.paper} mm</h2><select aria-label="Transaksi pratinjau" className="field !w-auto" value={previewTx} onChange={e => setPreviewTx(e.target.value === 'sample' ? 'sample' : 'last')}><option value="last">{state.txs.length ? 'Transaksi terakhir' : 'Transaksi contoh'}</option><option value="sample">Transaksi contoh</option></select></div>
-        <iframe title="Pratinjau struk thermal" sandbox="" srcDoc={receiptDocument(tx, profile, receipt)} className="w-full h-[560px] border rounded-md bg-card" />
+        <div className="rounded-lg border bg-muted/40 px-3 py-5 overflow-x-auto">
+          <iframe
+            title="Pratinjau struk thermal"
+            sandbox="allow-same-origin"
+            srcDoc={receiptDocument(tx, profile, receipt)}
+            className="block mx-auto max-w-full border-0 bg-white shadow-md"
+            style={{ width: `${receipt.paper}mm`, height: previewHeight }}
+            onLoad={(event) => {
+              // Skrip tetap diblokir oleh sandbox. Ukur artikel struk, bukan
+              // scrollHeight dokumen yang minimal setinggi viewport iframe.
+              const article = event.currentTarget.contentDocument?.querySelector('.thermal-receipt');
+              if (!article) return;
+              const measured = Math.ceil(article.getBoundingClientRect().height + 2);
+              setPreviewHeight(Math.max(140, Math.min(1800, measured)));
+            }}
+          />
+        </div>
+        <p className="text-xs text-muted-foreground">Pratinjau menyesuaikan lebar kertas {receipt.paper} mm dan panjang isi struk. Saat mencetak, pastikan ukuran kertas dan margin printer sesuai.</p>
         <Button variant="outline" onClick={() => printReceipt(tx, profile, receipt)}><Printer />Cetak uji struk</Button>
       </section>
     </div>
+    <section className="card mt-6 p-4 space-y-3" aria-label="Cadangan dan pemulihan data">
+      <h2 className="font-bold text-lg">Cadangkan / pulihkan data SembakoPOS</h2>
+      <p className="text-sm text-muted-foreground">Data barang, stok, transaksi, kulakan, dan pengaturan disimpan di browser. Alamat Lovable dan Vercel tidak otomatis berbagi data. Unduh cadangan dari alamat lama, lalu pulihkan pada alamat baru. Jangan unggah cadangan ke repository GitHub publik.</p>
+      <input ref={backupInput} className="hidden" aria-label="Pilih berkas cadangan JSON" type="file" accept=".json,application/json" onChange={e => { const file = e.currentTarget.files?.[0]; e.currentTarget.value = ''; void restoreBackup(file); }} />
+      <div className="flex flex-wrap gap-2">
+        <Button disabled={!ready} onClick={downloadBackup}><Download /> Unduh cadangan JSON</Button>
+        <Button disabled={!ready} variant="outline" onClick={() => backupInput.current?.click()}><Upload /> Pulihkan dari berkas</Button>
+      </div>
+      {backupMessage && <p role="status" className="text-sm font-semibold">{backupMessage}</p>}
+    </section>
   </>;
 }
