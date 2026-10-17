@@ -74,12 +74,13 @@ body { width: ${paper}mm; max-width: 100%; }
 .receipt-item-prices { margin-top: .6mm; }
 .receipt-summary .receipt-row { margin-bottom: .6mm; }
 .receipt-total {
-  font-weight: 800;
+  font-weight: 400;
   border-top: .2mm solid #555;
   padding-top: 1.1mm;
   margin-top: 1.1mm;
   margin-bottom: 1.2mm !important;
 }
+.receipt-total > span { font-weight: 800; }
 .receipt-footer { text-align: ${align}; white-space: pre-wrap; font-size: .9em; }
 @page { size: auto; margin: 0; }
 @media print {
