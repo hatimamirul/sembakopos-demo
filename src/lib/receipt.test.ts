@@ -13,7 +13,7 @@ it('keeps cashier and customer with the saved transaction for reprints', () => {
   expect(saved.customerName).toBe('Budi');
   const dom = new DOMParser().parseFromString(receiptDocument(saved), 'text/html');
   expect(dom.querySelector('.receipt-parties')?.textContent).toContain('Kasir: Ani');
-  expect(dom.querySelector('.receipt-parties')?.textContent).toContain('Pemesan: Budi');
+  expect(dom.querySelector('.receipt-customer')?.textContent).toContain('Pemesan: Budi');
   expect(dom.querySelector('.receipt-time')).not.toBeNull();
 });
 
@@ -22,7 +22,7 @@ it('escapes receipt names, supports old transactions and footer paragraphs', () 
   const dom = new DOMParser().parseFromString(receiptDocument({ ...sampleReceipt, cashierName: '<script>bad</script>' }, undefined, settings), 'text/html');
   expect(dom.querySelector('script')).toBeNull();
   expect(dom.querySelector('.receipt-parties')?.textContent).toContain('Kasir: <script>bad</script>');
-  expect(dom.querySelector('.receipt-parties')?.textContent).toContain('Pemesan: -');
+  expect(dom.querySelector('.receipt-customer')?.textContent).toContain('Pemesan: -');
   expect(dom.querySelector('.receipt-time')).toBeNull();
   expect(dom.querySelectorAll('.receipt-footer p')).toHaveLength(2);
 });
