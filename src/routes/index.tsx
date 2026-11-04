@@ -57,6 +57,8 @@ function Kasir() {
   const [cart, setCart] = useState<CartLine[]>([]);
   const [search, setSearch] = useState("");
   const [discountS, setDiscount] = useState("");
+  const [cashierName, setCashierName] = useState("");
+  const [customerName, setCustomerName] = useState("");
   const [paidS, setPaid] = useState("");
   const [error, setError] = useState("");
   const [scanning, setScanning] = useState(false);
@@ -95,11 +97,11 @@ function Kasir() {
   const pay = () => {
     if (discount === null) return setError("Diskon harus angka bulat (Rupiah).");
     if (paid === null) return setError("Isi jumlah uang tunai dengan angka.");
-    const r = checkout(state, cart, discount, paid);
+    const r = checkout(state, cart, discount, paid, { cashierName, customerName });
     if (!r.ok) return setError(r.error);
     if (!setState(r.state)) return;
     setDone(r.tx);
-    setCart([]); setDiscount(""); setPaid(""); setError("");
+    setCustomerName(""); setCart([]); setDiscount(""); setPaid(""); setError("");
   };
 
   const list = state.products.filter((p) => (p.name.toLowerCase().includes(search.toLowerCase()) || p.barcode?.includes(search.trim())));
@@ -152,6 +154,10 @@ function Kasir() {
           <div className="border-t pt-3 space-y-2 text-sm">
             <div className="flex justify-between"><span>Subtotal</span><span>{formatRp(subtotal)}</span></div>
             <div>
+              <label htmlFor="cashier-name" className="label">Nama kasir</label>
+              <input id="cashier-name" className="field" value={cashierName} onChange={e => setCashierName(e.target.value)} placeholder="Nama kasir" maxLength={80} />
+              <label htmlFor="customer-name" className="label mt-2">Nama pemesan (opsional)</label>
+              <input id="customer-name" className="field" value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder="Nama pemesan" maxLength={120} />
               <label htmlFor="discount" className="label">Diskon (Rp, opsional)</label>
               <input id="discount" className="field" inputMode="numeric" value={discountS} onChange={(e) => setDiscount(e.target.value)} placeholder="0" />
               {discount === null && <div className="text-xs text-destructive">Diskon harus angka bulat.</div>}
