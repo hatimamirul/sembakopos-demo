@@ -57,6 +57,8 @@ function Kasir() {
   const [cart, setCart] = useState<CartLine[]>([]);
   const [search, setSearch] = useState("");
   const [discountS, setDiscount] = useState("");
+  const [dateMode, setDateMode] = useState<"auto" | "manual">("auto");
+  const [manualDate, setManualDate] = useState("");
   const [cashierName, setCashierName] = useState("");
   const [customerName, setCustomerName] = useState("");
   const [paidS, setPaid] = useState("");
@@ -97,11 +99,13 @@ function Kasir() {
   const pay = () => {
     if (discount === null) return setError("Diskon harus angka bulat (Rupiah).");
     if (paid === null) return setError("Isi jumlah uang tunai dengan angka.");
-    const r = checkout(state, cart, discount, paid, { cashierName, customerName });
+    const selectedDate = dateMode === "manual" ? new Date(manualDate) : undefined;
+    if (selectedDate && (!manualDate || !Number.isFinite(selectedDate.getTime()))) return setError("Isi tanggal dan jam transaksi yang valid.");
+    const r = checkout(state, cart, discount, paid, { cashierName, customerName, date: selectedDate?.toISOString() });
     if (!r.ok) return setError(r.error);
     if (!setState(r.state)) return;
     setDone(r.tx);
-    setCustomerName(""); setCart([]); setDiscount(""); setPaid(""); setError("");
+    setDateMode("auto"); setManualDate(""); setCustomerName(""); setCart([]); setDiscount(""); setPaid(""); setError("");
   };
 
   const list = state.products.filter((p) => (p.name.toLowerCase().includes(search.toLowerCase()) || p.barcode?.includes(search.trim())));
@@ -158,6 +162,24 @@ function Kasir() {
               <input id="cashier-name" className="field" value={cashierName} onChange={e => setCashierName(e.target.value)} placeholder="Nama kasir" maxLength={80} />
               <label htmlFor="customer-name" className="label mt-2">Nama pemesan (opsional)</label>
               <input id="customer-name" className="field" value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder="Nama pemesan" maxLength={120} />
+              <label htmlFor="transaction-date-mode" className="label mt-2">Tanggal dan jam transaksi</label>
+              <select id="transaction-date-mode" className="field" value={dateMode} onChange={e => {
+                const mode = e.target.value === "manual" ? "manual" : "auto";
+                setDateMode(mode);
+                if (mode === "manual" && !manualDate) {
+                  const now = new Date();
+                  const local = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
+                  setManualDate(local.toISOString().slice(0, 16));
+                }
+              }}>
+                <option value="auto">Otomatis (waktu saat transaksi disimpan)</option>
+                <option value="manual">Atur tanggal dan jam manual</option>
+              </select>
+              {dateMode === "manual" && <div className="mt-2">
+                <label htmlFor="transaction-date" className="label">Tanggal dan jam manual</label>
+                <input id="transaction-date" type="datetime-local" className="field" value={manualDate} onChange={e => setManualDate(e.target.value)} required />
+              </div>}
+              <p className="text-xs text-muted-foreground mt-1">Mengikuti zona waktu perangkat. Setelah transaksi selesai, pilihan kembali otomatis.</p>
               <label htmlFor="discount" className="label">Diskon (Rp, opsional)</label>
               <input id="discount" className="field" inputMode="numeric" value={discountS} onChange={(e) => setDiscount(e.target.value)} placeholder="0" />
               {discount === null && <div className="text-xs text-destructive">Diskon harus angka bulat.</div>}

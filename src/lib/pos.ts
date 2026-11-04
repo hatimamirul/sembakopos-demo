@@ -187,7 +187,9 @@ export function stockProblems(products: Product[], cart: CartLine[]): string[] {
 
 export type CheckoutResult = { ok: true; state: State; tx: Tx } | { ok: false; error: string };
 
-export function checkout(state: State, cart: CartLine[], discount: number, paid: number, names: { cashierName?: string; customerName?: string } = {}): CheckoutResult {
+export function checkout(state: State, cart: CartLine[], discount: number, paid: number, names: { cashierName?: string; customerName?: string; date?: string } = {}): CheckoutResult {
+  const transactionDate = names.date === undefined ? new Date() : new Date(names.date);
+  if (!Number.isFinite(transactionDate.getTime())) return { ok: false, error: "Tanggal dan jam transaksi tidak valid." };
   const items = priceCart(state.products, cart);
   if (items.length === 0) return { ok: false, error: "Keranjang masih kosong." };
   if (!Number.isInteger(discount) || discount < 0) return { ok: false, error: "Diskon tidak valid." };
@@ -198,7 +200,7 @@ export function checkout(state: State, cart: CartLine[], discount: number, paid:
   if (discount > subtotal) return { ok: false, error: "Diskon melebihi subtotal." };
   const total = subtotal - discount;
   if (paid < total) return { ok: false, error: `Uang kurang ${formatRp(total - paid)}.` };
-  const tx: Tx = { cashierName: names.cashierName?.trim(), customerName: names.customerName?.trim(), id: "TRX-" + uid().toUpperCase(), date: new Date().toISOString(), items, subtotal, discount, total, paid, change: paid - total };
+  const tx: Tx = { cashierName: names.cashierName?.trim(), customerName: names.customerName?.trim(), id: "TRX-" + uid().toUpperCase(), date: transactionDate.toISOString(), items, subtotal, discount, total, paid, change: paid - total };
   const products = state.products.map((p) => {
     const used = items.filter((i) => i.productId === p.id).reduce((s, i) => s + i.baseQty, 0);
     return used ? { ...p, stock: p.stock - used } : p;
